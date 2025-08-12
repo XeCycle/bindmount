@@ -1,5 +1,7 @@
 #![no_std]
 
+use core::arch::naked_asm;
+
 use linux_syscalls::{syscall, Errno, Sysno};
 
 #[repr(C)]
@@ -33,14 +35,17 @@ unsafe extern "C" fn entry(initf: *const InitFrame) -> ! {
     syscall!([!] Sysno::exit_group, errno)
 }
 
-core::arch::global_asm!(
-    r".global _start
-_start:
-    xor %ebp, %ebp
-    mov %rsp, %rdi
-    call {main}",
-    main=sym entry,
-    options(att_syntax));
+#[unsafe(no_mangle)]
+#[unsafe(naked)]
+extern "C" fn _start() -> ! {
+    naked_asm!(
+        "xor %ebp, %ebp",
+        "mov %rsp, %rdi",
+        "call {main}",
+        main=sym entry,
+        options(att_syntax)
+    )
+}
 
 #[cfg(not(test))]
 #[panic_handler]
